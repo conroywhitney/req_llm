@@ -204,6 +204,25 @@ defmodule ReqLLM.Providers.Anthropic.Context do
     }
   end
 
+  # Thinking content blocks - required for extended thinking with tool use
+  # Anthropic API requires thinking blocks with signature to be preserved in multi-turn conversations
+  defp encode_content_part(%ReqLLM.Message.ContentPart{type: :thinking, text: ""}), do: nil
+
+  # Thinking block with signature (required for multi-turn with tools)
+  defp encode_content_part(%ReqLLM.Message.ContentPart{
+         type: :thinking,
+         text: text,
+         metadata: %{signature: signature}
+       })
+       when is_binary(signature) do
+    %{type: "thinking", thinking: text, signature: signature}
+  end
+
+  # Thinking block without signature (fallback - may fail in multi-turn with tools)
+  defp encode_content_part(%ReqLLM.Message.ContentPart{type: :thinking, text: text}) do
+    %{type: "thinking", thinking: text}
+  end
+
   defp encode_content_part(_), do: nil
 
   defp encode_tool_call_to_tool_use(%ToolCall{id: id, function: %{name: name, arguments: args}}) do

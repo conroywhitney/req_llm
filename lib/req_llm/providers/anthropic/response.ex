@@ -149,6 +149,16 @@ defmodule ReqLLM.Providers.Anthropic.Response do
     ReqLLM.StreamChunk.text(text)
   end
 
+  # Thinking blocks with signature (required for multi-turn with tools)
+  defp decode_content_block(%{"type" => "thinking", "thinking" => text, "signature" => signature}) do
+    ReqLLM.StreamChunk.thinking(text, %{signature: signature})
+  end
+
+  defp decode_content_block(%{"type" => "thinking", "text" => text, "signature" => signature}) do
+    ReqLLM.StreamChunk.thinking(text, %{signature: signature})
+  end
+
+  # Thinking blocks without signature (fallback)
   defp decode_content_block(%{"type" => "thinking", "thinking" => text}) do
     ReqLLM.StreamChunk.thinking(text)
   end
@@ -237,8 +247,9 @@ defmodule ReqLLM.Providers.Anthropic.Response do
     %ReqLLM.Message.ContentPart{type: :text, text: text}
   end
 
-  defp chunk_to_content_part(%ReqLLM.StreamChunk{type: :thinking, text: text}) do
-    %ReqLLM.Message.ContentPart{type: :thinking, text: text}
+  defp chunk_to_content_part(%ReqLLM.StreamChunk{type: :thinking, text: text, metadata: metadata}) do
+    # Preserve signature in metadata for multi-turn conversations with tools
+    %ReqLLM.Message.ContentPart{type: :thinking, text: text, metadata: metadata || %{}}
   end
 
   defp chunk_to_content_part(_), do: nil
